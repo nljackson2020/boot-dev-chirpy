@@ -5,14 +5,25 @@ import (
 	"net/http"
 )
 
+type apiconfig struct {
+	fileserverHits int
+}
+
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
+	apiCfg := apiconfig{
+		fileserverHits: 0,
+	}
+
 	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot))))
-	corsMux := middlewareCors(mux)
+	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	mux.HandleFunc("/healthz", handlerReadiness)
+	mux.HandleFunc("/metrics", apiCfg.handlerRequestCount)
+	mux.HandleFunc("/reset", apiCfg.reset)
+
+	corsMux := middlewareCors(mux)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
