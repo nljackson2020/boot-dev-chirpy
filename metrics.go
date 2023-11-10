@@ -12,14 +12,16 @@ func (cfg *apiconfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
-func (c *apiconfig) handlerRequestCount(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+func (c *apiconfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %d", c.fileserverHits)))
-}
+	w.Write([]byte(fmt.Sprintf(`<html>
 
-func (cfg *apiconfig) reset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits = 0
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
+	<body>
+		<h1>Welcome, Chirpy Admin</h1>
+		<p>Chirpy has been visited %d times!</p>
+	</body>
+	
+	</html>
+	`, c.fileserverHits)))
 }
