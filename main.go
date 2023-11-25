@@ -3,20 +3,31 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
 )
 
 type apiconfig struct {
 	fileserverHits int
+	jwtSecret      string
 }
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+
 	apiCfg := apiconfig{
 		fileserverHits: 0,
+		jwtSecret:      jwtSecret,
 	}
 
 	r := chi.NewRouter()
@@ -30,6 +41,8 @@ func main() {
 	apiRouter.Post("/chirps", handlerChirpsPostData)
 	apiRouter.Get("/chirps/{id}", handlerChirpsGetData)
 	apiRouter.Post("/users", handlerCreateUser)
+	apiRouter.Post("/login", handlerLogin)
+	apiRouter.Put("/users")
 	r.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
