@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"golang.org/x/crypto/bcrypt"
+	"log"
 	"net/http"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -12,18 +14,17 @@ type User struct {
 	Password string `json:"password"`
 }
 
+type ReturnUser struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
+}
+
 type UserParams struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
 }
 
-type UserResponse struct {
-	Email string `json:"email"`
-	ID    int    `json:"id"`
-}
-
 func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
-
 	decoder := json.NewDecoder(r.Body)
 	params := UserParams{}
 	err := decoder.Decode(&params)
@@ -50,6 +51,13 @@ func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, user := range dbStructure.User {
+		if params.Email == user.Email {
+			respondWithError(w, http.StatusConflict, "Email already exists")
+			return
+		}
+	}
+
 	maxID := 0
 	for id := range dbStructure.User {
 		if id > maxID {
@@ -59,14 +67,14 @@ func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't has password")
-		return
+		log.Fatal(err)
+		respondWithError(w, http.StatusInternalServerError, "Failed to hash password")
 	}
 
 	newUser := User{
-		Password: string(hashedPassword),
 		Email:    params.Email,
 		ID:       maxID + 1,
+		Password: string(hashedPassword),
 	}
 
 	if dbStructure.User == nil {
@@ -87,10 +95,10 @@ func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUserResponse := UserResponse{
-		Email: newUser.Email,
+	returnUser := ReturnUser{
 		ID:    newUser.ID,
+		Email: newUser.Email,
 	}
 
-	respondWithJSON(w, http.StatusCreated, newUserResponse)
+	respondWithJSON(w, http.StatusCreated, returnUser)
 }

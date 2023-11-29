@@ -7,16 +7,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type LoginParams struct {
-	Password           string `json:"password"`
-	Email              string `json:"email"`
-	Expires_in_seconds *int   `json:"expires_in_seconds,omitempty"`
+type LoginBody struct {
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 func handlerLogin(w http.ResponseWriter, r *http.Request) {
-
 	decoder := json.NewDecoder(r.Body)
-	params := LoginParams{}
+	params := LoginBody{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters")
@@ -26,7 +24,6 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 	db, err := NewDB("./database.json")
 	if err != nil {
 		respondWithError(w, http.StatusServiceUnavailable, "Error on the server side creating database")
-		return
 	}
 
 	dbStructure, err := db.loadDB()
@@ -35,23 +32,20 @@ func handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verifiedUser := UserResponse{}
-
 	for _, user := range dbStructure.User {
 		if params.Email == user.Email {
-			hashedPassword := user.Password
-			plaintextPassword := params.Password
-
-			err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plaintextPassword))
+			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(params.Password))
 
 			if err != nil {
-				respondWithError(w, http.StatusUnauthorized, "Incorrect password")
+				respondWithError(w, http.StatusUnauthorized, "Incorrect Password")
 				return
 			}
 
-			verifiedUser.Email = user.Email
-			verifiedUser.ID = user.ID
+			returnUser := ReturnUser{
+				ID:    user.ID,
+				Email: user.Email,
+			}
+			respondWithJSON(w, http.StatusOK, returnUser)
 		}
 	}
-	respondWithJSON(w, http.StatusOK, verifiedUser)
 }
