@@ -1,3 +1,4 @@
 chirpy.exe
 database.json
-.env
+chirpy
+prod.env

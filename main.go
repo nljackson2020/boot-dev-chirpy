@@ -15,17 +15,24 @@ type apiConfig struct {
 	fileserverHits int
 	DB             *database.DB
 	jwtSecret      string
+	polkaApiKey    string
 }
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	godotenv.Load(".env")
+	godotenv.Load("prod.env")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
+	polkaApiKey := os.Getenv("POLKA_API_KEY")
+
+	if polkaApiKey == "" {
+		log.Fatal("POLKA_API_KEY enviroment variable is not set")
 	}
 
 	db, err := database.NewDB("database.json")
@@ -46,6 +53,7 @@ func main() {
 		fileserverHits: 0,
 		DB:             db,
 		jwtSecret:      jwtSecret,
+		polkaApiKey:    polkaApiKey,
 	}
 
 	router := chi.NewRouter()
@@ -68,6 +76,9 @@ func main() {
 	apiRouter.Post("/chirps", apiCfg.handlerChirpsCreate)
 	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
 	apiRouter.Get("/chirps/{chirpID}", apiCfg.handlerChirpsGet)
+	apiRouter.Delete("/chirps/{chirpID}", apiCfg.handlerChirpsDelete)
+
+	apiRouter.Post("/polka/webhooks", apiCfg.handlerPolka)
 	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
