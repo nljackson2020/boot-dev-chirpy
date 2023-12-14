@@ -1,16 +1,19 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
+	"github.com/nljackson2020/chirpy/internal/database"
 )
 
-type apiconfig struct {
+type apiConfig struct {
 	fileserverHits int
+	DB             *database.DB
 	jwtSecret      string
 }
 
@@ -18,43 +21,63 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	godotenv.Load(".env")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
 
-	apiCfg := apiconfig{
+	db, err := database.NewDB("database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+	if dbg != nil && *dbg {
+		err := db.ResetDB()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	apiCfg := apiConfig{
 		fileserverHits: 0,
+		DB:             db,
 		jwtSecret:      jwtSecret,
 	}
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
-	r.Handle("/app/*", fsHandler)
-	r.Handle("/app", fsHandler)
+	router.Handle("/app", fsHandler)
+	router.Handle("/app/*", fsHandler)
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Get("/healthz", handlerReadiness)
-	apiRouter.Get("/reset", apiCfg.reset)
-	apiRouter.Post("/chirps", handlerChirpsPostData)
-	apiRouter.Get("/chirps/{id}", handlerChirpsGetData)
-	apiRouter.Post("/users", handlerCreateUser)
-	apiRouter.Post("/login", handlerLogin)
-	r.Mount("/api", apiRouter)
+	apiRouter.Get("/reset", apiCfg.handlerReset)
+
+	apiRouter.Post("/login", apiCfg.handlerLogin)
+
+	apiRouter.Post("/users", apiCfg.handlerUsersCreate)
+	apiRouter.Put("/users", apiCfg.handlerUsersUpdate)
+
+	apiRouter.Post("/chirps", apiCfg.handlerChirpsCreate)
+	apiRouter.Get("/chirps", apiCfg.handlerChirpsRetrieve)
+	apiRouter.Get("/chirps/{chirpID}", apiCfg.handlerChirpsGet)
+	router.Mount("/api", apiRouter)
 
 	adminRouter := chi.NewRouter()
 	adminRouter.Get("/metrics", apiCfg.handlerMetrics)
-	r.Mount("/admin", adminRouter)
+	router.Mount("/admin", adminRouter)
 
-	corsR := middlewareCors(r)
+	corsMux := middlewareCors(router)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: corsR,
+		Handler: corsMux,
 	}
 
-	log.Printf("Serving on port: %s\n", port)
+	log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
 	log.Fatal(srv.ListenAndServe())
 }
