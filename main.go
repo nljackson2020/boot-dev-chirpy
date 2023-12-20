@@ -22,7 +22,7 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	godotenv.Load("prod.env")
+	godotenv.Load(".env")
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -30,7 +30,6 @@ func main() {
 	}
 
 	polkaApiKey := os.Getenv("POLKA_API_KEY")
-
 	if polkaApiKey == "" {
 		log.Fatal("POLKA_API_KEY enviroment variable is not set")
 	}

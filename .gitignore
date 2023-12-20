@@ -2,3 +2,6 @@ chirpy.exe
 database.json
 chirpy
 prod.env
+chirpy.yml.tpl
+chirpy.yml
+.env
