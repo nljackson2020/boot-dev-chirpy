@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
-
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/joho/godotenv"
 	"github.com/nljackson2020/chirpy/internal/database"
 )
 
@@ -23,17 +22,19 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	godotenv.Load(".env")
+	// godotenv.Load()
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET environment variable is not set")
 	}
+	fmt.Printf("JWT_SECRET %v\n", jwtSecret)
 
 	polkaApiKey := os.Getenv("POLKA_API_KEY")
 	if polkaApiKey == "" {
-		log.Fatal("POLKA_API_KEY enviroment variable is not set")
+		log.Fatal("POLKA_API_KEY environment variable is not set")
 	}
+	fmt.Printf("POLKA_API_KEY %v\n", polkaApiKey)
 
 	db, err := database.NewDB("database.json")
 	if err != nil {
